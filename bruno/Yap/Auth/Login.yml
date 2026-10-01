@@ -6,6 +6,16 @@ info:
 http:
   method: POST
   url: "{{api}}login"
+  body:
+    type: form-urlencoded
+    data:
+      - name: username
+        value: ""
+      - name: email
+        value: ""
+        disabled: true
+      - name: password
+        value: ""
   auth: inherit
 
 settings:

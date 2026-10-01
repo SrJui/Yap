@@ -7,11 +7,14 @@ http:
   method: POST
   url: "{{api}}/auth/signup"
   body:
-    type: json
-    data: |-
-      {
-        
-      }
+    type: form-urlencoded
+    data:
+      - name: email
+        value: ""
+      - name: username
+        value: ""
+      - name: password
+        value: ""
   auth: inherit
 
 settings:
