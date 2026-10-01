@@ -36,6 +36,9 @@ func Signup(c fiber.Ctx) error {
 	}
 
 	// validation
+	// 3-18 chars
+	// _ allowed but not as first char
+	// . allowed but not as first char
 	validUsername := regexp.MustCompile(`^[a-zA-Z0-9-][a-zA-Z0-9._-]{2,17}$`)
 	if !validUsername.MatchString(username) {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -56,14 +59,14 @@ func Signup(c fiber.Ctx) error {
 		})
 	}
 
-	hash, err := argon2id.CreateHash(password, argon2id.DefaultParams)
+	hashedPassword, err := argon2id.CreateHash(password, argon2id.DefaultParams)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "error with hashing the password",
 		})
 	}
 
-	err = user.CreateUser(username, email, hash)
+	err = user.CreateUser(username, email, hashedPassword)
 	if errors.Is(err, gorm.ErrDuplicatedKey) {
 		return c.Status(fiber.StatusConflict).JSON(fiber.Map{
 			"error": "username or email already exists",
