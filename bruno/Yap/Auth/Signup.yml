@@ -9,9 +9,9 @@ http:
   body:
     type: form-urlencoded
     data:
-      - name: email
-        value: ""
       - name: username
+        value: ""
+      - name: email
         value: ""
       - name: password
         value: ""

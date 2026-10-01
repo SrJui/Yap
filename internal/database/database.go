@@ -44,5 +44,7 @@ func Connect() (*gorm.DB, error) {
 
 	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s", host, port, user, password, name, sslmode)
 
-	return gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	return gorm.Open(postgres.Open(dsn), &gorm.Config{
+		TranslateError: true,
+	})
 }

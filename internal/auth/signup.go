@@ -1,7 +1,79 @@
 package auth
 
-import "github.com/gofiber/fiber/v3"
+import (
+	"errors"
+	"net/mail"
+	"regexp"
+	"strings"
+	"unicode/utf8"
+
+	"github.com/SrJui/yap/internal/user"
+	"github.com/alexedwards/argon2id"
+	"github.com/gofiber/fiber/v3"
+	"gorm.io/gorm"
+)
 
 func Signup(c fiber.Ctx) error {
-	return c.SendString("Acc erstellt!")
+	username := strings.TrimSpace(c.FormValue("username"))
+	if username == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "username is missing",
+		})
+	}
+
+	email := strings.TrimSpace(c.FormValue("email"))
+	if email == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "email is missing",
+		})
+	}
+
+	password := c.FormValue("password")
+	if password == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "password is missing",
+		})
+	}
+
+	// validation
+	validUsername := regexp.MustCompile(`^[a-zA-Z0-9-][a-zA-Z0-9._-]{2,17}$`)
+	if !validUsername.MatchString(username) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "username is invalid",
+		})
+	}
+
+	address, err := mail.ParseAddress(email)
+	if err != nil || address.Address != email {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "email is invalid",
+		})
+	}
+
+	if utf8.RuneCountInString(password) < 12 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "password too short",
+		})
+	}
+
+	hash, err := argon2id.CreateHash(password, argon2id.DefaultParams)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "error with hashing the password",
+		})
+	}
+
+	err = user.CreateUser(username, email, hash)
+	if errors.Is(err, gorm.ErrDuplicatedKey) {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{
+			"error": "username or email already exists",
+		})
+	}
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "user creation failed",
+		})
+	}
+
+	return c.SendStatus(fiber.StatusCreated)
 }
