@@ -1,0 +1,12 @@
+name: localhost
+variables:
+  - name: host
+    value: localhost
+  - name: port
+    value: "3000"
+  - name: basepath
+    value: /api/v1
+  - name: protocol
+    value: http://
+  - name: api
+    value: "{{protocol}}{{host}}:{{port}}{{basepath}}"
