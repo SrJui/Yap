@@ -32,9 +32,9 @@ func main() {
 
 	app := fiber.New()
 
-	apiGroup := app.Group("api/v1")
+	apiPublicGroup := app.Group("api/v1")
 
-	authGroup := apiGroup.Group("auth/")
+	authGroup := apiPublicGroup.Group("auth/")
 
 	authGroup.Post("/signup", auth.Signup)
 	authGroup.Post("/login", auth.Login)
