@@ -13,6 +13,11 @@ import (
 	"gorm.io/gorm"
 )
 
+// 3-18 chars
+// _ allowed but not as first char
+// . allowed but not as first char
+var usernamePattern = regexp.MustCompile(`^[a-zA-Z0-9-][a-zA-Z0-9._-]{2,17}$`)
+
 func Signup(c fiber.Ctx) error {
 	username := strings.TrimSpace(c.FormValue("username"))
 	if username == "" {
@@ -36,11 +41,7 @@ func Signup(c fiber.Ctx) error {
 	}
 
 	// validation
-	// 3-18 chars
-	// _ allowed but not as first char
-	// . allowed but not as first char
-	validUsername := regexp.MustCompile(`^[a-zA-Z0-9-][a-zA-Z0-9._-]{2,17}$`)
-	if !validUsername.MatchString(username) {
+	if !usernamePattern.MatchString(username) {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "username is invalid",
 		})
@@ -66,7 +67,7 @@ func Signup(c fiber.Ctx) error {
 		})
 	}
 
-	err = user.CreateUser(username, email, hashedPassword)
+	err = user.Create(c.Context(), username, email, hashedPassword)
 	if errors.Is(err, gorm.ErrDuplicatedKey) {
 		return c.Status(fiber.StatusConflict).JSON(fiber.Map{
 			"error": "username or email already exists",
