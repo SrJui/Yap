@@ -2,16 +2,22 @@ package auth
 
 import (
 	"errors"
+	"log/slog"
 	"strings"
 
 	"github.com/SrJui/yap/internal/user"
 	"github.com/alexedwards/argon2id"
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/requestid"
 	"github.com/gofiber/fiber/v3/middleware/session"
 	"gorm.io/gorm"
 )
 
 func Login(c fiber.Ctx) error {
+	requestLog := slog.With(
+		"action", "login",
+		"request_id", requestid.FromContext(c),
+	)
 	sess := session.FromContext(c)
 
 	login := strings.TrimSpace(c.FormValue("login"))
@@ -54,6 +60,7 @@ func Login(c fiber.Ctx) error {
 		})
 	}
 	if err != nil {
+		requestLog.Error("user lookup failed", "err", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "db error",
 		})
@@ -62,6 +69,7 @@ func Login(c fiber.Ctx) error {
 	// check if password is valid
 	isValid, _, err := argon2id.CheckHash(password, foundUser.PasswordHash)
 	if err != nil {
+		requestLog.Error("password hash validation failed", "err", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "hash validation failed",
 		})
@@ -74,6 +82,7 @@ func Login(c fiber.Ctx) error {
 	}
 	// set coockie or something so that user is logged in
 	if err := sess.Regenerate(); err != nil {
+		requestLog.Error("session regeneration error", "err", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Session error",
 		})

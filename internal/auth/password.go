@@ -2,16 +2,23 @@ package auth
 
 import (
 	"errors"
+	"log/slog"
 	"strings"
 
 	"github.com/SrJui/yap/internal/user"
 	"github.com/alexedwards/argon2id"
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/requestid"
 	"github.com/gofiber/fiber/v3/middleware/session"
 	"gorm.io/gorm"
 )
 
 func ResetPassword(c fiber.Ctx) error {
+	requestLog := slog.With(
+		"action", "reset_password",
+		"request_id", requestid.FromContext(c),
+	)
+
 	// get email
 	email := strings.TrimSpace(c.FormValue("email"))
 	if email == "" {
@@ -33,14 +40,24 @@ func ResetPassword(c fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusBadRequest)
 	}
 	if err != nil {
-		return c.SendStatus(fiber.StatusInternalServerError)
+		requestLog.Error("user lookup failed", "err", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "user lookup failed",
+		})
 	}
 
 	// send recover email
-	return c.SendStatus(fiber.StatusOK)
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message": "successfully send recover email",
+	})
 }
 
 func ChangePassword(c fiber.Ctx) error {
+	requestLog := slog.With(
+		"action", "change_password",
+		"request_id", requestid.FromContext(c),
+	)
+
 	// get sess info
 	sess := session.FromContext(c)
 
@@ -50,12 +67,15 @@ func ChangePassword(c fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusUnauthorized)
 	}
 
+	requestLog = requestLog.With("user_id", userID)
+
 	// get user with user id
 	currentUser, err := user.FindByID(c.Context(), userID)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return c.SendStatus(fiber.StatusUnauthorized)
 	}
 	if err != nil {
+		requestLog.Error("user lookup error", "err", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "user lookup failed",
 		})
@@ -79,6 +99,7 @@ func ChangePassword(c fiber.Ctx) error {
 	// validate password with user password
 	isValid, _, err := argon2id.CheckHash(currentPassword, currentUser.PasswordHash)
 	if err != nil {
+		requestLog.Error("password hash validation failed", "err", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "hash validation failed",
 		})
@@ -100,6 +121,7 @@ func ChangePassword(c fiber.Ctx) error {
 	// hash password
 	hashedPassword, err := argon2id.CreateHash(newPassword, argon2id.DefaultParams)
 	if err != nil {
+		requestLog.Error("password hashing failed", "err", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "error with hashing the password",
 		})
@@ -111,6 +133,7 @@ func ChangePassword(c fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusUnauthorized)
 	}
 	if err != nil {
+		requestLog.Error("password update failed", "err", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "password update failed",
 		})

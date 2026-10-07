@@ -2,15 +2,22 @@ package auth
 
 import (
 	"errors"
+	"log/slog"
 	"strings"
 
 	"github.com/SrJui/yap/internal/user"
 	"github.com/alexedwards/argon2id"
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/requestid"
 	"gorm.io/gorm"
 )
 
 func Signup(c fiber.Ctx) error {
+	requestLog := slog.With(
+		"action", "signup",
+		"request_id", requestid.FromContext(c),
+	)
+
 	username := strings.TrimSpace(c.FormValue("username"))
 	if username == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -53,6 +60,7 @@ func Signup(c fiber.Ctx) error {
 
 	hashedPassword, err := argon2id.CreateHash(password, argon2id.DefaultParams)
 	if err != nil {
+		requestLog.Error("password hashing failed", "err", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "error with hashing the password",
 		})
@@ -65,6 +73,7 @@ func Signup(c fiber.Ctx) error {
 		})
 	}
 	if err != nil {
+		requestLog.Error("user creation failed", "err", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "user creation failed",
 		})
