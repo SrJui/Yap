@@ -3,7 +3,6 @@ package auth
 import (
 	"net/mail"
 	"regexp"
-	"unicode/utf8"
 )
 
 // 3-18 chars
@@ -11,8 +10,12 @@ import (
 // . allowed but not as first char
 var usernamePattern = regexp.MustCompile(`^[a-zA-Z0-9-][a-zA-Z0-9._-]{2,17}$`)
 
+// min. 12 chars
+// ascii allowed without space
+var passwordPattern = regexp.MustCompile(`^[\x21-\x7E]{12,}$`)
+
 func isValidPassword(password string) bool {
-	return utf8.RuneCountInString(password) >= 12
+	return passwordPattern.MatchString(password)
 }
 
 func isValidEmail(email string) bool {
