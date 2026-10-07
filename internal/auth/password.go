@@ -2,8 +2,8 @@ package auth
 
 import (
 	"errors"
-	"fmt"
-	"unicode/utf8"
+	"net/mail"
+	"strings"
 
 	"github.com/SrJui/yap/internal/user"
 	"github.com/alexedwards/argon2id"
@@ -14,8 +14,28 @@ import (
 
 func ResetPassword(c fiber.Ctx) error {
 	// get email
+	email := strings.TrimSpace(c.FormValue("email"))
+	if email == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "email is missing",
+		})
+	}
+
+	address, err := mail.ParseAddress(email)
+	if err != nil || address.Address != email {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "email is invalid",
+		})
+	}
 
 	// check if email is in database
+	_, err = user.FindByUsernameOrEmail(c.Context(), "", email)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return c.SendStatus(fiber.StatusBadRequest)
+	}
+	if err != nil {
+		return c.SendStatus(fiber.StatusInternalServerError)
+	}
 
 	// send recover email
 	return c.SendStatus(fiber.StatusOK)
@@ -34,7 +54,6 @@ func ChangePassword(c fiber.Ctx) error {
 	// get user with user id
 	currentUser, err := user.FindByID(c.Context(), userID)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		fmt.Println("1")
 		return c.SendStatus(fiber.StatusUnauthorized)
 	}
 	if err != nil {
@@ -44,14 +63,14 @@ func ChangePassword(c fiber.Ctx) error {
 	}
 
 	// get password
-	password := c.FormValue("password")
-	if password == "" {
+	currentPassword := c.FormValue("currentPassword")
+	if currentPassword == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "password is missing",
+			"error": "currentPassword is missing",
 		})
 	}
 
-	newPassword := c.FormValue("new_password")
+	newPassword := c.FormValue("newPassword")
 	if newPassword == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "new password is missing",
@@ -59,7 +78,7 @@ func ChangePassword(c fiber.Ctx) error {
 	}
 
 	// validate password with user password
-	isValid, _, err := argon2id.CheckHash(password, currentUser.PasswordHash)
+	isValid, _, err := argon2id.CheckHash(currentPassword, currentUser.PasswordHash)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "hash validation failed",
@@ -73,7 +92,7 @@ func ChangePassword(c fiber.Ctx) error {
 	}
 
 	// validate new password
-	if utf8.RuneCountInString(newPassword) < 12 {
+	if !ValidatePassword(newPassword) {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "password too short",
 		})
@@ -90,7 +109,6 @@ func ChangePassword(c fiber.Ctx) error {
 	// change password in db
 	err = user.UpdatePasswordHash(c.Context(), userID, hashedPassword)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		fmt.Println("2")
 		return c.SendStatus(fiber.StatusUnauthorized)
 	}
 	if err != nil {
@@ -99,5 +117,7 @@ func ChangePassword(c fiber.Ctx) error {
 		})
 	}
 
-	return c.SendStatus(fiber.StatusOK)
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message": "successfully changed password",
+	})
 }

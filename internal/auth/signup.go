@@ -5,7 +5,6 @@ import (
 	"net/mail"
 	"regexp"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/SrJui/yap/internal/user"
 	"github.com/alexedwards/argon2id"
@@ -54,7 +53,7 @@ func Signup(c fiber.Ctx) error {
 		})
 	}
 
-	if utf8.RuneCountInString(password) < 12 {
+	if !ValidatePassword(password) {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "password too short",
 		})

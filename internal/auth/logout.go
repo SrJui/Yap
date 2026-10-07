@@ -13,5 +13,7 @@ func Logout(c fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).SendString("Session error")
 	}
 
-	return c.SendStatus(fiber.StatusOK)
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message": "successfully logged out",
+	})
 }
