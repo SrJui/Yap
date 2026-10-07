@@ -16,12 +16,24 @@ func Create(ctx context.Context, username string, email string, passwordHash str
 	return err
 }
 
-func FindByUsernameOrEmail(ctx context.Context, username string, email string) (User, error) {
-	if username == "" && email == "" {
-		return User{}, errors.New("username or email is required")
+func FindByUsername(ctx context.Context, username string) (User, error) {
+	if username == "" {
+		return User{}, errors.New("username is required")
 	}
 
-	user := User{Username: username, Email: email}
+	user := User{Username: username}
+
+	user, err := gorm.G[User](database.DB).Where(&user).First(ctx)
+
+	return user, err
+}
+
+func FindByEmail(ctx context.Context, email string) (User, error) {
+	if email == "" {
+		return User{}, errors.New("email is required")
+	}
+
+	user := User{Email: email}
 
 	user, err := gorm.G[User](database.DB).Where(&user).First(ctx)
 
@@ -43,10 +55,5 @@ func UpdatePasswordHash(ctx context.Context, userID uint, passwordHash string) e
 }
 
 func FindByID(ctx context.Context, userID uint) (User, error) {
-	user := User{}
-	user.ID = userID
-
-	user, err := gorm.G[User](database.DB).Where(&user).First(ctx)
-
-	return user, err
+	return gorm.G[User](database.DB).Where("id = ?", userID).First(ctx)
 }

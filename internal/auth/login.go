@@ -2,7 +2,6 @@ package auth
 
 import (
 	"errors"
-	"net/mail"
 	"strings"
 
 	"github.com/SrJui/yap/internal/user"
@@ -32,8 +31,7 @@ func Login(c fiber.Ctx) error {
 	email := ""
 	if strings.Contains(login, "@") {
 		email = login
-		address, err := mail.ParseAddress(email)
-		if err != nil || address.Address != email {
+		if !isValidEmail(email) {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"error": "Invalid email",
 			})
@@ -43,7 +41,13 @@ func Login(c fiber.Ctx) error {
 	}
 
 	// find user in database
-	foundUser, err := user.FindByUsernameOrEmail(c.Context(), username, email)
+	var foundUser user.User
+	var err error
+	if email != "" {
+		foundUser, err = user.FindByEmail(c.Context(), email)
+	} else {
+		foundUser, err = user.FindByUsername(c.Context(), username)
+	}
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Invalid credentials",

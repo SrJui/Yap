@@ -2,7 +2,6 @@ package auth
 
 import (
 	"errors"
-	"net/mail"
 	"strings"
 
 	"github.com/SrJui/yap/internal/user"
@@ -21,15 +20,15 @@ func ResetPassword(c fiber.Ctx) error {
 		})
 	}
 
-	address, err := mail.ParseAddress(email)
-	if err != nil || address.Address != email {
+	isValid := isValidEmail(email)
+	if !isValid {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "email is invalid",
 		})
 	}
 
 	// check if email is in database
-	_, err = user.FindByUsernameOrEmail(c.Context(), "", email)
+	_, err := user.FindByEmail(c.Context(), email)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return c.SendStatus(fiber.StatusBadRequest)
 	}
@@ -92,7 +91,7 @@ func ChangePassword(c fiber.Ctx) error {
 	}
 
 	// validate new password
-	if !ValidatePassword(newPassword) {
+	if !isValidPassword(newPassword) {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "password too short",
 		})

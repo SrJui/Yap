@@ -2,8 +2,6 @@ package auth
 
 import (
 	"errors"
-	"net/mail"
-	"regexp"
 	"strings"
 
 	"github.com/SrJui/yap/internal/user"
@@ -11,11 +9,6 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"gorm.io/gorm"
 )
-
-// 3-18 chars
-// _ allowed but not as first char
-// . allowed but not as first char
-var usernamePattern = regexp.MustCompile(`^[a-zA-Z0-9-][a-zA-Z0-9._-]{2,17}$`)
 
 func Signup(c fiber.Ctx) error {
 	username := strings.TrimSpace(c.FormValue("username"))
@@ -40,20 +33,19 @@ func Signup(c fiber.Ctx) error {
 	}
 
 	// validation
-	if !usernamePattern.MatchString(username) {
+	if !isValidUsername(username) {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "username is invalid",
 		})
 	}
 
-	address, err := mail.ParseAddress(email)
-	if err != nil || address.Address != email {
+	if !isValidEmail(email) {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "email is invalid",
 		})
 	}
 
-	if !ValidatePassword(password) {
+	if !isValidPassword(password) {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "password too short",
 		})

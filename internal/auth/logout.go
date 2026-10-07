@@ -10,7 +10,9 @@ func Logout(c fiber.Ctx) error {
 
 	// Complete session reset (clears all data + new session ID)
 	if err := sess.Reset(); err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString("Session error")
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "session error",
+		})
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
