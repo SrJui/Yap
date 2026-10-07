@@ -7,6 +7,7 @@ require (
 	github.com/gofiber/fiber/v3 v3.5.0
 	github.com/gofiber/storage/postgres/v3 v3.7.1
 	github.com/joho/godotenv v1.5.1
+	github.com/resend/resend-go/v4 v4.8.1
 	gorm.io/driver/postgres v1.6.3
 	gorm.io/gorm v1.31.2
 )

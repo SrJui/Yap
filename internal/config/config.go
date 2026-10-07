@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net/mail"
 	"os"
 	"strconv"
 	"time"
@@ -22,6 +23,11 @@ type DatabaseConfig struct {
 	Password string
 	Name     string
 	SSLMode  string
+}
+
+type MailConfig struct {
+	APIKey string
+	From   string
 }
 
 func LoadSession() (SessionConfig, error) {
@@ -94,4 +100,22 @@ func LoadDatabase() (DatabaseConfig, error) {
 	}
 
 	return DatabaseConfig{Host: host, Port: port, User: user, Password: password, Name: name, SSLMode: sslmode}, nil
+}
+
+func LoadMail() (MailConfig, error) {
+	apiKey := os.Getenv("RESEND_API_KEY")
+	if apiKey == "" {
+		return MailConfig{}, errors.New("RESEND_API_KEY is empty")
+	}
+
+	from := os.Getenv("MAIL_FROM")
+	if from == "" {
+		return MailConfig{}, errors.New("MAIL_FROM is empty")
+	}
+	address, err := mail.ParseAddress(from)
+	if err != nil || address.Address != from {
+		return MailConfig{}, errors.New("MAIL_FROM is not a valid email")
+	}
+
+	return MailConfig{APIKey: apiKey, From: from}, nil
 }

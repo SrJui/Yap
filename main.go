@@ -33,6 +33,12 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Mailer config
+	//mailConf, err := config.LoadMail()
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+
 	// Connect db
 	database.DB, err = database.Connect(dbConf)
 	if err != nil {
@@ -46,6 +52,9 @@ func main() {
 
 	// Build session store
 	store := auth.BuildSessionStore(dbConf, sessConf)
+
+	// Create mailer
+	//mailClient := mailer.New(mailConf)
 
 	app := fiber.New()
 
