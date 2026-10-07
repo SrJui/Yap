@@ -8,6 +8,8 @@ import (
 	"github.com/SrJui/yap/internal/database"
 	"github.com/SrJui/yap/internal/user"
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/logger"
+	"github.com/gofiber/fiber/v3/middleware/requestid"
 	"github.com/joho/godotenv"
 )
 
@@ -47,6 +49,13 @@ func main() {
 
 	app := fiber.New()
 
+	// Use logger middleware
+	app.Use(requestid.New())
+
+	app.Use(logger.New(logger.Config{
+		Format: "${time} request_id=${requestid} method=${method} path=${path} status=${status} duration=${latency}\n",
+	}))
+
 	// Use session middleware
 	app.Use(auth.NewSessionMiddleware(store, sessConf))
 
@@ -59,12 +68,11 @@ func main() {
 	authGroup.Post("/signup", auth.Signup)
 	authGroup.Post("/login", auth.Login)
 	authGroup.Post("/logout", auth.Logout)
+	authGroup.Post("/password-reset", auth.ResetPassword)
 
 	// Protected routes
 	protectedAPI := api.Group("", auth.RequireAuth)
-	protectedAPI.Get("/test", func(c fiber.Ctx) error {
-		return c.SendString("Nice!")
-	})
+	protectedAPI.Put("/password-change", auth.ChangePassword)
 
 	log.Fatal(app.Listen(":3000"))
 }

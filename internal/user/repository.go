@@ -27,3 +27,26 @@ func FindByUsernameOrEmail(ctx context.Context, username string, email string) (
 
 	return user, err
 }
+
+func UpdatePasswordHash(ctx context.Context, userID uint, passwordHash string) error {
+	rows, err := gorm.G[User](database.DB).Where("id = ?", userID).Update(ctx, "password_hash", passwordHash)
+
+	if err != nil {
+		return err
+	}
+
+	if rows == 0 {
+		return gorm.ErrRecordNotFound
+	}
+
+	return nil
+}
+
+func FindByID(ctx context.Context, userID uint) (User, error) {
+	user := User{}
+	user.ID = userID
+
+	user, err := gorm.G[User](database.DB).Where(&user).First(ctx)
+
+	return user, err
+}
