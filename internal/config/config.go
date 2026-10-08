@@ -112,8 +112,8 @@ func LoadMail() (MailConfig, error) {
 	if from == "" {
 		return MailConfig{}, errors.New("MAIL_FROM is empty")
 	}
-	address, err := mail.ParseAddress(from)
-	if err != nil || address.Address != from {
+	_, err := mail.ParseAddress(from)
+	if err != nil {
 		return MailConfig{}, errors.New("MAIL_FROM is not a valid email")
 	}
 
