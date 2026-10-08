@@ -46,7 +46,12 @@ func ResetPassword(c fiber.Ctx) error {
 		})
 	}
 
+	// create cryptic token
+
+	// save token in psql
+
 	// send recover email
+
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"message": "successfully send recover email",
 	})

@@ -17,7 +17,7 @@ func New(cfg config.MailConfig) *Mailer {
 	}
 }
 
-func (m *Mailer) Send(to []string, subject, body string) error {
+func (m *Mailer) Send(to []string, subject string, body string) error {
 	params := &resend.SendEmailRequest{
 		From:    m.config.From,
 		To:      to,
