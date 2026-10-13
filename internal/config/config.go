@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/mail"
+	"net/url"
 	"os"
 	"strconv"
 	"time"
@@ -28,6 +29,10 @@ type DatabaseConfig struct {
 type MailConfig struct {
 	APIKey string
 	From   string
+}
+
+type PasswordResetConfig struct {
+	URL string
 }
 
 func LoadSession() (SessionConfig, error) {
@@ -118,4 +123,27 @@ func LoadMail() (MailConfig, error) {
 	}
 
 	return MailConfig{APIKey: apiKey, From: from}, nil
+}
+
+func LoadPasswordReset() (PasswordResetConfig, error) {
+	resetURL := os.Getenv("PASSWORD_RESET_URL")
+	if resetURL == "" {
+		return PasswordResetConfig{}, errors.New("PASSWORD_RESET_URL is empty")
+	}
+	parsedURL, err := url.Parse(resetURL)
+	if err != nil {
+		return PasswordResetConfig{}, fmt.Errorf("PASSWORD_RESET_URL: %w", err)
+	}
+	if parsedURL.Hostname() == "" {
+		return PasswordResetConfig{}, errors.New("PASSWORD_RESET_URL must contain a host")
+	}
+	isHTTPS := parsedURL.Scheme == "https"
+	isLocalHTTP := parsedURL.Scheme == "http" && parsedURL.Hostname() == "localhost"
+
+	if !isHTTPS && !isLocalHTTP {
+		return PasswordResetConfig{}, errors.New(
+			"PASSWORD_RESET_URL must use HTTP on localhost or HTTPS",
+		)
+	}
+	return PasswordResetConfig{URL: resetURL}, nil
 }

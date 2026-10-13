@@ -6,6 +6,7 @@ import (
 	"github.com/SrJui/yap/internal/auth"
 	"github.com/SrJui/yap/internal/config"
 	"github.com/SrJui/yap/internal/database"
+	"github.com/SrJui/yap/internal/mailer"
 	"github.com/SrJui/yap/internal/user"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/logger"
@@ -15,7 +16,7 @@ import (
 
 func main() {
 	// Load config
-	err := godotenv.Load()
+	err := godotenv.Load(".env.local", ".env")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -34,10 +35,15 @@ func main() {
 	}
 
 	// Mailer config
-	//mailConf, err := config.LoadMail()
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
+	mailConf, err := config.LoadMail()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	resetConf, err := config.LoadPasswordReset()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// Connect db
 	database.DB, err = database.Connect(dbConf)
@@ -46,7 +52,7 @@ func main() {
 	}
 
 	// Migrate db
-	if err = database.DB.AutoMigrate(&user.User{}); err != nil {
+	if err = database.DB.AutoMigrate(&user.User{}, &auth.ResetToken{}); err != nil {
 		log.Fatal(err)
 	}
 
@@ -54,7 +60,8 @@ func main() {
 	store := auth.BuildSessionStore(dbConf, sessConf)
 
 	// Create mailer
-	//mailClient := mailer.New(mailConf)
+	mailClient := mailer.New(mailConf)
+	resetHandler := auth.NewPasswordResetHandler(mailClient, resetConf)
 
 	app := fiber.New()
 
@@ -77,7 +84,7 @@ func main() {
 	authGroup.Post("/signup", auth.Signup)
 	authGroup.Post("/login", auth.Login)
 	authGroup.Post("/logout", auth.Logout)
-	authGroup.Post("/password-reset", auth.ResetPassword)
+	authGroup.Post("/password-reset", resetHandler.ResetPassword)
 
 	// Protected routes
 	protectedAPI := api.Group("", auth.RequireAuth)

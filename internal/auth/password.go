@@ -3,8 +3,11 @@ package auth
 import (
 	"errors"
 	"log/slog"
+	"net/url"
 	"strings"
 
+	"github.com/SrJui/yap/internal/config"
+	"github.com/SrJui/yap/internal/mailer"
 	"github.com/SrJui/yap/internal/user"
 	"github.com/alexedwards/argon2id"
 	"github.com/gofiber/fiber/v3"
@@ -13,7 +16,19 @@ import (
 	"gorm.io/gorm"
 )
 
-func ResetPassword(c fiber.Ctx) error {
+type PasswordResetHandler struct {
+	mailer *mailer.Mailer
+	config config.PasswordResetConfig
+}
+
+func NewPasswordResetHandler(mailClient *mailer.Mailer, cfg config.PasswordResetConfig) *PasswordResetHandler {
+	return &PasswordResetHandler{
+		mailer: mailClient,
+		config: cfg,
+	}
+}
+
+func (h *PasswordResetHandler) ResetPassword(c fiber.Ctx) error {
 	requestLog := slog.With(
 		"action", "reset_password",
 		"request_id", requestid.FromContext(c),
@@ -35,9 +50,11 @@ func ResetPassword(c fiber.Ctx) error {
 	}
 
 	// check if email is in database
-	_, err := user.FindByEmail(c.Context(), email)
+	currentUser, err := user.FindByEmail(c.Context(), email)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return c.SendStatus(fiber.StatusBadRequest)
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{
+			"message": "If an account exists for this email, a reset link has been sent.",
+		})
 	}
 	if err != nil {
 		requestLog.Error("user lookup failed", "err", err)
@@ -47,13 +64,49 @@ func ResetPassword(c fiber.Ctx) error {
 	}
 
 	// create cryptic token
-
-	// save token in psql
+	token, err := createResetToken(c.Context(), currentUser.ID)
+	if err != nil {
+		requestLog.Error("reset token creation failed", "err", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "reset token creation failed",
+		})
+	}
 
 	// send recover email
+	resetURL, err := url.Parse(h.config.URL)
+	if err != nil {
+		requestLog.Error("creating url failed", "err", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "creating url failed",
+		})
+	}
+
+	query := resetURL.Query()
+	query.Set("token", token)
+	resetURL.RawQuery = query.Encode()
+	resetLink := resetURL.String()
+
+	body, err := mailer.RenderPasswordReset(resetLink)
+	if err != nil {
+		requestLog.Error("reset email rendering failed", "err", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "reset email rendering failed",
+		})
+	}
+	err = h.mailer.Send(
+		[]string{currentUser.Email},
+		"Reset your password",
+		body,
+	)
+	if err != nil {
+		requestLog.Error("reset email sending failed", "err", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "reset email sending failed",
+		})
+	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"message": "successfully send recover email",
+		"message": "If an account exists for this email, a reset link has been sent.",
 	})
 }
 
