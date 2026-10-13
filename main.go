@@ -85,6 +85,7 @@ func main() {
 	authGroup.Post("/login", auth.Login)
 	authGroup.Post("/logout", auth.Logout)
 	authGroup.Post("/password-reset", resetHandler.ResetPassword)
+	authGroup.Post("/password-reset/confirm", resetHandler.ConfirmPasswordReset)
 
 	// Protected routes
 	protectedAPI := api.Group("", auth.RequireAuth)

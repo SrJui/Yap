@@ -58,7 +58,7 @@ func Signup(c fiber.Ctx) error {
 
 	if !isValidPassword(password) {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "password too short",
+			"error": "password is invalid",
 		})
 	}
 
@@ -343,7 +343,7 @@ func ChangePassword(c fiber.Ctx) error {
 	// validate new password
 	if !isValidPassword(newPassword) {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "password too short",
+			"error": "password is invalid",
 		})
 	}
 
@@ -371,4 +371,62 @@ func ChangePassword(c fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"message": "successfully changed password",
 	})
+}
+
+func (h *PasswordResetHandler) ConfirmPasswordReset(c fiber.Ctx) error {
+	requestLog := slog.With(
+		"action", "confirm_password_reset",
+		"request_id", requestid.FromContext(c),
+	)
+
+	// get token from form field
+	token := c.FormValue("token")
+	if token == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "token is missing",
+		})
+	}
+
+	// get new password from form field
+	newPassword := c.FormValue("newPassword")
+	if newPassword == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "new password is missing",
+		})
+	}
+
+	// validate new password
+	if !isValidPassword(newPassword) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "password is invalid",
+		})
+	}
+
+	// hash token
+	hashedToken := hashResetToken(token)
+
+	// hash password
+	hashedPassword, err := argon2id.CreateHash(newPassword, argon2id.DefaultParams)
+	if err != nil {
+		requestLog.Error("password hashing failed", "err", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "error with hashing the password",
+		})
+	}
+
+	err = consumeResetToken(c.Context(), hashedToken, hashedPassword)
+	if errors.Is(err, ErrInvalidResetToken) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "reset token is invalid or expired",
+		})
+	}
+	if err != nil {
+		requestLog.Error("password reset failed", "err", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "password reset failed",
+		})
+	}
+
+	// success message
+	return c.SendStatus(fiber.StatusOK)
 }
