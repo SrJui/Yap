@@ -11,12 +11,6 @@ import (
 	"github.com/SrJui/yap/internal/database"
 )
 
-type ResetToken struct {
-	TokenHash string `gorm:"primaryKey"`
-	UserID    uint
-	ExpiresAt time.Time
-}
-
 func generateResetToken() string {
 	tokenNumber := make([]byte, 32)
 	rand.Read(tokenNumber)
