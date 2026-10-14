@@ -7,6 +7,7 @@ import (
 	"github.com/SrJui/yap/internal/config"
 	"github.com/SrJui/yap/internal/database"
 	"github.com/SrJui/yap/internal/mailer"
+	"github.com/SrJui/yap/internal/post"
 	"github.com/SrJui/yap/internal/user"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/logger"
@@ -52,7 +53,7 @@ func main() {
 	}
 
 	// Migrate db
-	if err = database.DB.AutoMigrate(&user.User{}, &auth.ResetToken{}); err != nil {
+	if err = database.DB.AutoMigrate(&user.User{}, &auth.ResetToken{}, &post.Post{}, &post.Media{}); err != nil {
 		log.Fatal(err)
 	}
 
@@ -90,6 +91,12 @@ func main() {
 	// Protected routes
 	protectedAPI := api.Group("", auth.RequireAuth)
 	protectedAPI.Put("/password-change", auth.ChangePassword)
+
+	protectedAPI.Post("/posts", post.CreatePost)
+	protectedAPI.Get("/posts", post.GetAllPosts)
+	protectedAPI.Get("/posts/:id", post.GetOnePost)
+	protectedAPI.Put("/posts/:id", post.UpdatePost)
+	protectedAPI.Delete("/posts/:id", post.DeletePost)
 
 	log.Fatal(app.Listen(":3000"))
 }

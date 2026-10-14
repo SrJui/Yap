@@ -5,7 +5,14 @@ info:
 
 http:
   method: GET
-  url: "{{api}}/post"
+  url: "{{api}}/posts?limit=&offset="
+  params:
+    - name: limit
+      value: ""
+      type: query
+    - name: offset
+      value: ""
+      type: query
   auth: inherit
 
 settings:
@@ -13,3 +20,4 @@ settings:
   timeout: 0
   followRedirects: true
   maxRedirects: 5
+  forwardAuthorizationHeader: true
